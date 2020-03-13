@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # This file is part of webscreenshot.
@@ -26,6 +26,7 @@ from __future__ import print_function
 import re
 import os
 import sys
+import glob
 import subprocess
 import datetime
 import time
@@ -59,6 +60,7 @@ main_grp.add_argument('-i', '--input-file', help = '<INPUT_FILE> text file conta
 main_grp.add_argument('-o', '--output-directory', help = '<OUTPUT_DIRECTORY> (optional): screenshots output directory (default \'./screenshots/\')')
 main_grp.add_argument('-w', '--workers', help = '<WORKERS> (optional): number of parallel execution workers (default 4)', default = 4)
 main_grp.add_argument('-v', '--verbosity', help = '<VERBOSITY> (optional): verbosity level, repeat it to increase the level { -v INFO, -vv DEBUG } (default verbosity ERROR)', action = 'count', default = 0)
+main_grp.add_argument('--skip', help = 'skip screenshots for websites that have been completed', action = 'store_true', default = False)
 
 proc_grp = parser.add_argument_group('Input processing parameters')
 proc_grp.add_argument('-p', '--port', help = '<PORT> (optional): use the specified port for each target in the input list. Ex: -p 80')
@@ -517,9 +519,23 @@ def take_screenshot(url_list, options):
     """
     global SHELL_EXECUTION_OK, SHELL_EXECUTION_ERROR
     
-    screenshot_number = len(url_list)
+    screenshot_number = len(url_list) 
+    if options.skip:           
+        url_list1=[]
+        tmpFileList=glob.glob(SCREENSHOTS_DIRECTORY+"/*.png")
+        tmpUrlList=[]
+        for x in tmpFileList:
+            tmpUrl=x.split("_")[0]+"://"+x.split("_")[1]+":"+x.split("_")[2]
+            tmpUrl=tmpUrl.replace(SCREENSHOTS_DIRECTORY+"/","")
+            tmpUrl=tmpUrl.replace(".png","")
+            if tmpUrl not in tmpUrlList:
+                tmpUrlList.append(tmpUrl)
+        for x in url_list:
+            if x not in tmpUrlList:
+                url_list1.append(x)
+        url_list = url_list1
+        screenshot_number = len(url_list)            
     print("[+] %s URLs to be screenshot" % screenshot_number)
-    
     pool = multiprocessing.Pool(processes=int(options.workers), initializer=init_worker)
     
     taken_screenshots = [r for r in pool.imap(func=craft_cmd, iterable=izip(url_list, itertools.repeat(options)))]
